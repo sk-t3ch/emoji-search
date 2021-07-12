@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "EmojiSearch/Recommendations Output",
+  "description": "Ouput of API call to EmojiSearch/Recommendations endpoint",
+  "type": "object",
+  "properties": {
+     "most_similar": {
+        "description": "The emojis similar to your search e.g. big obstacle",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "emoji": { "type": "string" },
+            "code_point": { "type": "array", "items": { "type": "integer"} },
+            "description": { "type": "string" },
+            "score": { "type": "number"}
+          }
+        }
+      }
+  },
+  "required": ["most_similar"]
+}

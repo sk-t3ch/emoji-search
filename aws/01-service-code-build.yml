@@ -1,0 +1,110 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  ProjectName:
+    Type: String
+  BranchName:
+    Type: String
+  ArtifactBucketName:
+    Type: String
+  ArtifactBucketArn:
+    Type: String
+  CommitHash:
+    Type: String
+  DockerRepository:
+    Type: String
+  DockerRepositoryArn:
+    Type: String
+  
+Resources:
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub ${ProjectName}-${BranchName}-CodeBuildProject-Service
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      TimeoutInMinutes: 100
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:2.0
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - Name: BucketName
+            Value: !ImportValue CodeBucketName
+          - Name: ProjectName
+            Value: !Ref ProjectName
+          - Name: AWS_DEFAULT_REGION
+            Value: !Ref AWS::Region
+          - Name: AWS_ACCOUNT_ID
+            Value: !Ref AWS::AccountId
+          - Name: IMAGE_REPO_NAME
+            Value: !Ref DockerRepository
+          - Name: IMAGE_TAG
+            Value: !Ref CommitHash
+          - Name: MODEL_LOCATION
+            Value: !Sub ${ArtifactBucketName}/models/GoogleNews-vectors-negative300-SLIM.bin.gz
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: aws/service-buildspec.yml
+
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action: ['sts:AssumeRole']
+          Effect: Allow
+          Principal:
+            Service: [codebuild.amazonaws.com]
+        Version: '2012-10-17'
+      Path: /
+      Policies:
+        - PolicyName: ArtifactBucket
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                - "s3:*"
+                Effect: Allow
+                Resource: 
+                  - !Sub ${ArtifactBucketArn}/*
+                  - !Sub ${ArtifactBucketArn}
+        - PolicyName: CodeBucket
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                - "s3:*"
+                Effect: Allow
+                Resource: 
+                  - !Sub 
+                    - ${BucketArn}/*
+                    - BucketArn: !ImportValue CodeBucketArn
+                  - !ImportValue CodeBucketArn
+        - PolicyName: LogsCreation
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                - 'logs:CreateLogStream'
+                - 'logs:CreateLogGroup'
+                - 'logs:PutLogEvents'
+                Effect: Allow
+                Resource: "*"                 
+        - PolicyName: ecrBuild
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                - 'ecr:GetAuthorizationToken'
+                - 'ecr:BatchCheckLayerAvailability'
+                - 'ecr:CompleteLayerUpload'
+                - 'ecr:InitiateLayerUpload'
+                - 'ecr:PutImage'
+                - 'ecr:UploadLayerPart'
+                Effect: Allow
+                Resource: 
+                  - "*"
+       

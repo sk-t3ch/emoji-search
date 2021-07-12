@@ -1,0 +1,16 @@
+version: 0.2
+ 
+phases:
+  install:
+    commands:
+      - cd src/widget/app
+  pre_build:
+    commands:
+      - npm install
+  build:
+    commands:
+      - npm run generate
+  post_build:
+    commands:
+      - aws s3 sync ./dist s3://$BUCKET_NAME
+      - aws cloudfront create-invalidation --distribution-id $CloudFrontDistId --paths '/*'

@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "EmojiSearch/recommendation Input",
+  "description": "Input of API call to EmojiSearch/recommendation endpoint",
+  "type": "object",
+  "properties": {
+    "key": {
+      "description": "API Key for T3chFlicks",
+      "type": "string",
+      "example": "4373484b03e6bf7d9839b4ccdce6feb80f1c44bc510c412abfd43a9dca33caa2a02883e6155c98e93ad41be828db0416a2a70edaa9353e401ab3e40f3e5f5533"
+    },
+    "search": {
+      "type": "string",
+      "description": "Description of emoji",
+      "example": "Dog"
+    },
+    "quantity": {
+      "type": "number",
+      "description": "Max number of emojis returned - default of 5",
+      "example": 5
+    }
+  },
+  "required": [
+    "key",
+    "search"
+  ]
+}

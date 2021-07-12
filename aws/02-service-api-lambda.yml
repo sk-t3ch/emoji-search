@@ -1,0 +1,169 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  EmojiSearchImage:
+    Type: String
+  ProjectName:
+    Type: String
+  CommitHash:
+    Type: String
+
+
+Resources:
+  ListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - TargetGroupArn: !Ref LoadBalancerTargetGroup
+          Type: forward
+      Conditions:
+        - Field: path-pattern
+          PathPatternConfig:
+            Values:
+            - /emoji-search/recommendations*
+      ListenerArn: !ImportValue T3chFlicksAPI-LoadBalancerListenerArn
+      Priority: 2     
+
+  LoadBalancerTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      TargetType: lambda
+      Targets:
+        - AvailabilityZone: all
+          Id: !GetAtt LambdaFunction.Arn
+
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+      PackageType: "Image"
+      MemorySize: "1536"
+      Timeout: 10
+      Code:
+        ImageUri: !Sub ${EmojiSearchImage}:${CommitHash}
+      Role: !GetAtt LambdaRole.Arn
+      Environment:
+        Variables:
+          TABLE_NAME: !ImportValue T3chFlicks-UserTableName
+          CHARGE_LAMBDA: !ImportValue T3chFlicks-ChargeLambdaName
+          REFUND_LAMBDA: !ImportValue T3chFlicks-RefundLambdaName
+
+
+  LambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref LambdaFunction
+      Action: 'lambda:InvokeFunction'
+      Principal: elasticloadbalancing.amazonaws.com
+      
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: [ 'sts:AssumeRole' ]
+            Effect: Allow
+            Principal:
+              Service: [ 'lambda.amazonaws.com' ]
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/CloudWatchLambdaInsightsExecutionRolePolicy
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: "UserTableAccessPolicy"
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:GetItem*'
+                Resource: !ImportValue T3chFlicks-UserTableArn
+        - PolicyName: "ChargeAndRefundPolicy"
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'lambda:invoke*'
+                Resource:
+                  - !ImportValue T3chFlicks-ChargeLambdaArn
+                  - !ImportValue T3chFlicks-RefundLambdaArn
+
+  HTTP5xxsAlarm:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties:
+      AlarmDescription: !Sub Sum Http 500s for ${ProjectName}
+      AlarmActions:
+        - !ImportValue AlertSNSTopicArn
+      MetricName: HTTPCode_Target_5XX_Count
+      TreatMissingData: notBreaching
+      Namespace: AWS/ApplicationELB
+      Statistic: Sum
+      Period: '60'
+      EvaluationPeriods: '1'
+      Threshold: 1
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: TargetGroup
+          Value: !GetAtt LoadBalancerTargetGroup.TargetGroupFullName
+        - Name: LoadBalancer
+          Value: !ImportValue T3chFlicksAPI-LoadBalancerArn
+
+  HTTP4xxsAlarm:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties:
+      AlarmDescription: !Sub Sum Http 400s for ${ProjectName}
+      AlarmActions:
+        - !ImportValue AlertSNSTopicArn
+      MetricName: HTTPCode_Target_4XX_Count
+      TreatMissingData: notBreaching
+      Namespace: AWS/ApplicationELB
+      Statistic: Sum
+      Period: '60'
+      EvaluationPeriods: '1'
+      Threshold: 1
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: TargetGroup
+          Value: !GetAtt LoadBalancerTargetGroup.TargetGroupFullName
+        - Name: LoadBalancer
+          Value: !ImportValue T3chFlicksAPI-LoadBalancerArn
+
+  # CPUAlarm:
+  #   Type: "AWS::CloudWatch::Alarm"
+  #   Properties:
+  #     AlarmDescription: !Sub CPU alarm for ${ProjectName}
+  #     AlarmActions:
+  #       - !ImportValue AlertSNSArn
+  #     MetricName: CPUUtilization
+  #     Namespace: AWS/ECS
+  #     Statistic: Average
+  #     Period: '60'
+  #     EvaluationPeriods: '2'
+  #     Threshold: 90
+  #     ComparisonOperator: GreaterThanThreshold
+  #     Dimensions:
+  #       - Name: ServiceName
+  #         Value: !GetAtt Service.Name
+  #       - Name: ClusterName
+  #         Value: !ImportValue ECSCluster
+
+  # LatencyAlarm:
+  #   Type: AWS::CloudWatch::Alarm
+  #   Properties:
+  #     AlarmDescription: "Alert if latency is over 1 seconds"
+  #     AlarmActions:
+  #       - !ImportValue AlertSNSArn
+  #     Namespace: AWS/ApplicationELB
+  #     MetricName: TargetResponseTime
+  #     Statistic: Average
+  #     Period: 60
+  #     EvaluationPeriods: 2
+  #     ComparisonOperator: GreaterThanThreshold
+  #     Threshold: 1.0
+  #     Dimensions:
+  #       - Name: TargetGroup
+  #         Value: !GetAtt TargetGroup.TargetGroupFullName
+  #     TreatMissingData: notBreaching

@@ -1,0 +1,15 @@
+// Ref: https://github.com/nuxt-community/vuetify-module#customvariables
+//
+// The variables you want to modify
+// $font-size-root: 20px;
+$shadow-key-umbra-opacity: rgba(#007bff, 0.3) !default;
+$shadow-key-penumbra-opacity: rgba(#007bff, 0.24) !default;
+$shadow-key-ambient-opacity: rgba(#007bff, 0.22) !default;
+
+// $shadow-key-umbra-opacity: rgba(0, 0, 0, 0.2) !default;
+// $shadow-key-penumbra-opacity: rgba(0, 0, 0, 0.14) !default;
+// $shadow-key-ambient-opacity: rgba(0, 0, 0, 0.12) !default;
+
+// $body-font-family: 'Work Sans', sans-serif;
+
+@import '~vuetify/src/styles/styles.sass';

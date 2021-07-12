@@ -1,0 +1,146 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  ProjectName:
+    Type: String
+  BranchName:
+    Type: String
+  CommitHash:
+    Type: String
+  ArtifactBucketArn:
+    Type: String
+
+
+Resources:
+  WidgetsCodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub ${ProjectName}-${BranchName}-CodeBuildProject-Widgets
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        PrivilegedMode: true
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:2.0
+        EnvironmentVariables:
+          - Name: T3CHFLICKS_ROOT_DOMAIN
+            Value: !ImportValue T3chFlicksRootDomainName
+          - Name: BUCKET_NAME
+            Value: !ImportValue T3chFlicks-EmojiSearchBucketName
+          - Name: SERVICE_ROOT_DOMAIN
+            Value: !Sub
+              - emoji-search.${Domain}
+              - Domain: !ImportValue T3chFlicksRootDomainName
+          - Name: SERVICE_API_DOMAIN
+            Value: !Sub
+              - ${Domain}/emoji-search
+              - Domain: !ImportValue T3chFlicksAPIDomainName
+          - Name: CloudFrontDistId
+            Value: !ImportValue  T3chFlicks-EmojiSearchCloudFrontDistId
+          - Name: CommitHash
+            Value: !Ref CommitHash
+          - Name: AWS_DEFAULT_REGION
+            Value: !Ref AWS::Region
+          - Name: AWS_ACCOUNT_ID
+            Value: !Ref AWS::AccountId
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: aws/widgets-buildspec.yml
+      TimeoutInMinutes: 10
+
+
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action: ['sts:AssumeRole']
+          Effect: Allow
+          Principal:
+            Service: [codebuild.amazonaws.com]
+        Version: '2012-10-17'
+      Path: /
+      Policies:
+        - PolicyName: ArtifactBucket
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                - "s3:*"
+                Effect: Allow
+                Resource: 
+                  - !Sub ${ArtifactBucketArn}/*
+                  - !Sub ${ArtifactBucketArn}
+        - PolicyName: WidgetBucket
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                - "s3:*"
+                Effect: Allow
+                Resource: 
+                  - !Sub 
+                    - ${BucketArn}/*
+                    - BucketArn: !ImportValue T3chFlicks-EmojiSearchBucketArn
+                  - !Sub 
+                    - ${BucketArn}
+                    - BucketArn: !ImportValue T3chFlicks-EmojiSearchBucketArn
+        - PolicyName: CodeBucket
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                - "s3:*"
+                Effect: Allow
+                Resource: 
+                  - !Sub 
+                    - ${BucketArn}/*
+                    - BucketArn: !ImportValue CodeBucketArn
+                  - !ImportValue CodeBucketArn
+        - PolicyName: LogsCreation
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                - 'logs:CreateLogStream'
+                - 'logs:CreateLogGroup'
+                - 'logs:PutLogEvents'
+                Effect: Allow
+                Resource: "*"                 
+        - PolicyName: "DecryptSecrets"
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:DescribeParameters
+                  - ssm:GetParameters
+                  - ssm:GetParameter
+                  - kms:Decrypt
+                Resource: 
+                  - !ImportValue KMSKeyArn
+                  - !Sub arn:aws:ssm:eu-west-1:${ AWS::AccountId }:parameter/DOCKER_PASS          
+        - PolicyName: ecrBuild
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                - 'ecr:GetAuthorizationToken'
+                - 'ecr:BatchCheckLayerAvailability'
+                - 'ecr:CompleteLayerUpload'
+                - 'ecr:InitiateLayerUpload'
+                - 'ecr:PutImage'
+                - 'ecr:UploadLayerPart'
+                Effect: Allow
+                Resource: 
+                  - "*"
+        - PolicyName: CloudfrontUpdate
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                - 'cloudfront:CreateInvalidation'
+                Effect: Allow
+                Resource: "*"    
