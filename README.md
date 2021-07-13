@@ -28,7 +28,7 @@ Then deploy the pipeline to AWS:
 aws cloudformation deploy --template-file ./aws/00-pipeline.yml  --parameter-overrides CredentialsArn=arn:aws:codestar-connections:eu-west-1:482883100039:connection/****** BranchName=master ProjectName=emoji-search --stack-name emoji-search-pipeline-master --region=eu-west-1  --capabilities CAPABILITY_NAMED_IAM --profile=Prod_T3
   ```
 
-We do not want to store the GoogleNews Vectors in the repository as they are 1.5GB large. The deployment pipeline will therefore fail in the first deploy as it will search for the model in the empty s3 bucket provisioned. 
+We do not want to store the GoogleNews Vectors in the repository as they are large. The deployment pipeline will therefore fail in the first deploy as it will search for the model in the empty s3 bucket provisioned. 
 
 We must therefore upload the model to the bucket:
 

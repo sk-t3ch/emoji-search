@@ -228,9 +228,9 @@ export default {
 </script>
 <style scoped>
 .gradyOne {
-  background: linear-gradient(90deg, #9a8c98, #360639);
+  background: linear-gradient(90deg, #dde0bd, #360639);
 }
 .gradyTwo {
-  background: linear-gradient(90deg, #ff6c03 , #dde0bd);
+  background: linear-gradient(90deg, #ff6c03 , #9a8c98);
 }
 </style>
