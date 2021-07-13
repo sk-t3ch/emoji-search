@@ -12,7 +12,7 @@
 ![](./thumbnail.png)
 [![Generic badge](https://img.shields.io/badge/Blog_Post-Github-orange.svg)](./blog_post.md)
 
-[![Generic badge](https://img.shields.io/badge/Blog_Post-Medium-blue.svg)](https://t3chflicks.medium.com/giving-away-free-apis-without-going-broke-cd87a7dc78a5)
+[![Generic badge](https://img.shields.io/badge/Blog_Post-Medium-blue.svg)](https://t3chflicks.medium.com/emoji-search-creating-deploying-and-evaluating-a-machine-learning-service-f97c29976d6d)
 
 
 ## Try The Service
